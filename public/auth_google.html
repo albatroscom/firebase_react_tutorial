@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>firebase 인증</title>
+
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link type="text/css" rel="stylesheet" href="/css/materialize.min.css"  media="screen,projection"/>
+  <style> #CONTENTS{ min-height: 1000px;}</style>
+</head>
+
+<body>
+
+  <!-- 상단 네비게이션 -->
+  <nav class="indigo">
+    <div class="nav-wrapper">
+      <div class="container">
+        <a href="/" class="breadcrumb">Firebase</a>
+        <a href="/auth_firebase_ui.html" class="breadcrumb">Authentication</a>
+        <a href="#" class="breadcrumb">google auth</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 내용 부분 -->
+  <div class="container" id="CONTENTS">
+
+    <!-- 로그인박스 -->
+    <div class="card">
+      <div class="card-content">
+        로그인 상태 : <!-- 상태 보기용 span 추가 -->
+        <span id="AUTH_STATE" class="blue-text">인증되지 않음</span>
+      </div>
+      <div class="card-action">
+        <!-- 로그인 버튼 -->
+        <button id="BTN_GOOGLE_LOGIN" type="button" class="btn indigo">구글 인증</button>
+      
+        <!-- 로그아웃 버튼 -->
+        <button id="BTN_GOOGLE_LOGOUT" type="button" class="btn indigo" style="display: none;">구글 인증해제</button>  
+
+        <!-- 유저 정보 확인용 요소 추가 -->
+        <ol id="USER_INFO">
+          <li>UID : <span id="USER_UID" class="blue-text"></span></li>
+          <li>메일 : <span id="USER_MAIL" class="blue-text"></span></li>
+          <li>이름 : <span id="USER_NAME" class="blue-text"></span></li>
+          <li><img id="USER_PHOTO" style="width:10%; height:10%;"></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- 바닥글 영역 -->
+  <footer class="page-footer indigo">
+    <div class="container">
+      <div class="row center">
+        <a href="/auth_firebase_ui.html" class="btn white indigo-text">돌아가기</a>
+      </div>
+    </div>
+    <div class="footer-copyright">
+      <div class="container">
+      &copy; 2016 Copyright 
+      <a class="white-text right" href="http://materializecss.com/" target="_blank">design by Materializecss</a>
+      </div>
+    </div>
+  </footer>
+
+<!-- /////////////////////////////////// javascript 스크립트 영역 /////////////////////////////////// -->
+
+  <!--Import jQuery before materialize.js-->
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script type="text/javascript" src="/js/materialize.min.js"></script>
+
+  <!-- firebase SDK 링크 -->
+  <script src="https://www.gstatic.com/firebasejs/3.3.0/firebase.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/3.3.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/3.3.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/3.3.0/firebase-database.js"></script>
+
+  <script>
+    // Initialize Firebase
+    // Replace with your project's customized code snippet
+    var config = {
+      apiKey: "AIzaSyC1o99ZDjfgb8j0fSXgWNrVy-8ohgMNMQw",
+      authDomain: "react-tutorial-49e45.firebaseapp.com",
+      databaseURL: "https://react-tutorial-49e45.firebaseio.com",
+      storageBucket: "react-tutorial-49e45.appspot.com",
+    };
+    firebase.initializeApp(config);
+  </script>
+  
+  <script type="text/javascript">
+
+    /* 구글 인증 */
+    $('#BTN_GOOGLE_LOGIN').click(function() {
+      var provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider).then(function(result) {
+      }).catch(function(error) {
+        alert(error.message)
+      });
+    });
+
+    /* 구글 인증 해제 */
+    $('#BTN_GOOGLE_LOGOUT').click(function(){
+      // TODO 4. DB의 변화를 더이상 감지 하지 않음
+
+      // 3. 접속상태값을 변경
+      firebase.database().ref("/onUsers/"+_uid+"/siteOn").set(0);
+
+      // 인증 해제
+      firebase.auth().signOut().then(function() {
+        alert("인증이 해제되었습니다.");
+      }, function(error) {
+        alert(error.message);
+      });
+    });
+
+    /* 인증 상태 변화 감시하기 */
+    var _uid = null; // 유저의 uid를 저장해둘 전역 변수
+    firebase.auth().onAuthStateChanged(function(user) {
+
+      // 인증되었을때
+      if (user) {
+        _uid = user.uid;
+        $("#AUTH_STATE").text(user.displayName+"님 로그인 하셨습니다");
+        $("#BTN_GOOGLE_LOGOUT").show();
+        
+        // User 정보 보기
+        $("#USER_INFO").show();
+        $("#USER_NAME").text(user.displayName);
+        $("#USER_MAIL").text(user.email);
+        $("#USER_UID").text(_uid);
+        $("#USER_PHOTO").attr('src', user.photoURL);
+        
+        // 3. 디비에 접속 하면 상태 변경 (등록이 안된 상태면 새로 쓰기)
+        firebase.database().ref('/onUsers/' + _uid).set({"username": user.displayName, "siteOn": 1});
+
+        // TODO 4. 상태가 바뀔 때를 감지할 리스너(JS옵저버) 장착
+
+        // TODO 7. 디비에 접속 끊길때 이벤트 감지하하면 특정값 변경 (siteOn 상태를 0으로 변경)
+
+      // 인증해제되었을때
+      } else { // 2. 인증이 해제 되거나 인증되지 않은 경우
+        $("#AUTH_STATE").text("(인증하셔야 볼 수 있습니다)");
+        $("#BTN_GOOGLE_LOGOUT").hide();
+        $("#USER_INFO").hide();
+        _uid = null;
+      }
+    });
+
+    /* TODO 로그아웃 버튼을 눌렀을 때 인증 해제 하도록 하기 */
+  </script>
+
+</body>
+</html>
